@@ -337,6 +337,45 @@
 
     </main>
 
+    <!-- SUBMISSION SUCCESS CONFIRMATION MODAL -->
+    <div class="modal-backdrop hidden" id="submission-success-modal">
+        <div class="modal-box success-modal-box">
+            <div class="modal-header success-header">
+                <h3><i class="fa-solid fa-circle-check"></i> הדיווח נשלח בהצלחה!</h3>
+                <button class="modal-close" onclick="closeSuccessModal()">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="success-dialog-icon">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <h4 class="success-title" id="success-unit-name">יחידה</h4>
+                <p class="success-desc">
+                    הדיווח היומי נתקבל ונרשם בהצלחה במערכת הדמ"ח.
+                </p>
+                <div class="success-summary-box">
+                    <div class="summary-item">
+                        <span class="label">תאריך:</span>
+                        <span class="value" id="success-date-val">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label">סה"כ עובדים שדווחו:</span>
+                        <span class="value" id="success-quota-val">0</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label">שעת הגשה:</span>
+                        <span class="value" id="success-time-val">-</span>
+                    </div>
+                </div>
+                <p class="wishing-text"><i class="fa-solid fa-heart"></i> שיהיה יום נעים ועבודה פוריה!</p>
+            </div>
+            <div class="modal-footer justify-center">
+                <button class="btn btn-primary" onclick="closeSuccessModal()">
+                    <i class="fa-solid fa-check"></i> סגור והמשך
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- DUPLICATE SUBMISSION WARNING MODAL -->
     <div class="modal-backdrop hidden" id="already-submitted-modal">
         <div class="modal-box alert-modal-box">

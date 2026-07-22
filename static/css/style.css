@@ -519,6 +519,8 @@ body {
 }
 .no-unit-selected i { font-size: 3rem; margin-bottom: 1rem; color: #cbd5e1; }
 .hidden { display: none !important; }
+.text-center { text-align: center; }
+.justify-center { justify-content: center; }
 
 /* Audit Feed Banner */
 .audit-feed-card {
@@ -554,6 +556,7 @@ body {
     font-weight: 600;
     color: #92400e;
     box-shadow: var(--shadow-sm);
+}
 
 .dashboard-controls-bar {
     display: flex;
@@ -716,6 +719,58 @@ body {
     box-shadow: var(--shadow-lg);
     overflow: hidden;
     animation: modalPop 0.2s ease;
+}
+
+.success-modal-box {
+    max-width: 460px;
+}
+
+.success-header {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: #ffffff;
+}
+
+.success-dialog-icon {
+    font-size: 4rem;
+    color: #059669;
+    margin: 0.4rem 0;
+}
+
+.success-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-main);
+
+.success-desc {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.success-summary-box {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: var(--radius-md);
+    padding: 0.9rem 1.2rem;
+    margin: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.success-summary-box .summary-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.92rem;
+}
+
+.success-summary-box .summary-item .label { color: #166534; }
+.success-summary-box .summary-item .value { font-weight: 700; color: #15803d; }
+
+.wishing-text {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #059669;
+    margin-top: 0.5rem;
 }
 
 .alert-modal-box {

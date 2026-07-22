@@ -33,7 +33,10 @@ function getTodayDateString() {
 }
 
 function formatTimeString(isoStr) {
-    if (!isoStr) return '';
+    if (!isoStr) {
+        const now = new Date();
+        return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
     try {
         const dt = new Date(isoStr);
         if (isNaN(dt.getTime())) return isoStr;
@@ -289,7 +292,6 @@ async function fetchUnitReportForDate() {
                 document.getElementById('standby-reduction').value = report.standby_reduction;
                 document.getElementById('other-absent').value = report.other_absent;
 
-                // Open Warning Popup Modal for duplicate submission!
                 showDuplicateWarningModal(report);
             } else {
                 resetCategoryInputs();
@@ -317,7 +319,6 @@ function showDuplicateWarningModal(report) {
 
 function cancelDuplicateModal() {
     document.getElementById('already-submitted-modal').classList.add('hidden');
-    // Reset unit dropdown to avoid unintentional changes
     document.getElementById('unit-select').value = '';
     document.getElementById('unit-select').dispatchEvent(new Event('change'));
     showToast('עדכון הדיווח בוטל', 'info');
@@ -326,6 +327,18 @@ function cancelDuplicateModal() {
 function confirmDuplicateUpdate() {
     document.getElementById('already-submitted-modal').classList.add('hidden');
     showToast('ניתן כעת לבצע שינויים בטופס הדיווח', 'warning');
+}
+
+function showSuccessConfirmationModal(unitName, reportDate, quota) {
+    document.getElementById('success-unit-name').textContent = `יחידת ${unitName}`;
+    document.getElementById('success-date-val').textContent = reportDate;
+    document.getElementById('success-quota-val').textContent = quota;
+    document.getElementById('success-time-val').textContent = formatTimeString(null);
+    document.getElementById('submission-success-modal').classList.remove('hidden');
+}
+
+function closeSuccessModal() {
+    document.getElementById('submission-success-modal').classList.add('hidden');
 }
 
 function resetCategoryInputs() {
@@ -441,11 +454,7 @@ async function submitDailyReport() {
 
         const data = await res.json();
         if (data.success) {
-            if (data.is_update) {
-                showToast(`דיווח יחידת ${state.selectedUnit.unit_name} עודכן בהצלחה! התראה נשלחה לדשבורד.`, 'warning');
-            } else {
-                showToast('הדיווח היומי נשמר בהצלחה!', 'success');
-            }
+            showSuccessConfirmationModal(state.selectedUnit.unit_name, state.reportDate, state.selectedUnit.quota);
             loadDashboardData();
         } else {
             showToast(data.error || 'שגיאה בשמירת הדיווח', 'danger');
