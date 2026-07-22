@@ -8,7 +8,8 @@ let state = {
     dashStats: {},
     currentUser: null,
     pendingTabId: null,
-    existingReportForSelectedUnit: null
+    existingReportForSelectedUnit: null,
+    isFormUnlockedForEdit: false
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -51,7 +52,6 @@ function formatTimeString(isoStr) {
         if (!isoStr) {
             dt = new Date();
         } else {
-            // If ISO string doesn't specify timezone offset, assume UTC or parse safely
             if (typeof isoStr === 'string' && !isoStr.includes('Z') && !isoStr.includes('+')) {
                 dt = new Date(isoStr.replace(' ', 'T') + 'Z');
             } else {
@@ -290,6 +290,7 @@ function populateUnitDropdown() {
         }
 
         state.selectedUnit = state.units.find(u => u.id === unitId);
+        state.isFormUnlockedForEdit = false;
         document.getElementById('no-unit-placeholder').classList.add('hidden');
         document.getElementById('report-inputs-grid').classList.remove('hidden');
         document.getElementById('validation-wrapper').classList.remove('hidden');
@@ -300,8 +301,33 @@ function populateUnitDropdown() {
 }
 
 /* -------------------------------------------------------------------
- * Daily Report Form & Live Validation
+ * Daily Report Form & Strict Form Locking
  * ------------------------------------------------------------------- */
+function setFormLocked(isLocked) {
+    const categoryInputs = document.querySelectorAll('.category-input');
+    const stepBtns = document.querySelectorAll('.btn-step');
+    const autoFillBtn = document.getElementById('auto-fill-btn');
+    const submitBtn = document.getElementById('submit-report-btn');
+
+    categoryInputs.forEach(input => {
+        input.disabled = isLocked;
+    });
+
+    stepBtns.forEach(btn => {
+        btn.disabled = isLocked;
+        if (isLocked) {
+            btn.style.opacity = '0.4';
+            btn.style.cursor = 'not-allowed';
+        } else {
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        }
+    });
+
+    if (autoFillBtn) autoFillBtn.disabled = isLocked;
+    if (submitBtn && isLocked) submitBtn.disabled = true;
+}
+
 async function fetchUnitReportForDate() {
     if (!state.selectedUnit) return;
 
@@ -319,14 +345,18 @@ async function fetchUnitReportForDate() {
                 document.getElementById('standby-reduction').value = report.standby_reduction;
                 document.getElementById('other-absent').value = report.other_absent;
 
+                // STRICT LOCK: Lock form inputs by default until user explicitly confirms unlock in modal!
+                setFormLocked(true);
                 showDuplicateWarningModal(report);
             } else {
                 resetCategoryInputs();
+                setFormLocked(false);
             }
             recalculateValidation();
         }
     } catch (err) {
         resetCategoryInputs();
+        setFormLocked(false);
         recalculateValidation();
     }
 }
@@ -339,21 +369,25 @@ function showDuplicateWarningModal(report) {
     const formattedTime = formatTimeString(report.updated_at || report.created_at);
 
     unitTitleEl.textContent = `יחידת ${report.unit_name}`;
-    timeTextEl.innerHTML = `יחידה זו כבר הגישה דיווח יומי עבור תאריך <strong>${report.report_date}</strong> בשעה <strong>${formattedTime}</strong> (שעון ישראל).<br>האם ברצונכם לעדכן/לשנות את הדיווח?`;
+    timeTextEl.innerHTML = `יחידה זו כבר הגישה דיווח יומי מלא עבור תאריך <strong>${report.report_date}</strong> בשעה <strong>${formattedTime}</strong>.<br><br><span style="color:#b45309; font-weight:700;">הטופס נחסם למילוי נוסף למניעת דריסה.</span><br>לחצו על "אני רוצה לאשר פתיחה לעדכון" כדי לשחרר את הטופס לעריכה.`;
     
     modal.classList.remove('hidden');
 }
 
 function cancelDuplicateModal() {
     document.getElementById('already-submitted-modal').classList.add('hidden');
+    // Reset unit dropdown to force user to choose again or leave locked
     document.getElementById('unit-select').value = '';
     document.getElementById('unit-select').dispatchEvent(new Event('change'));
-    showToast('עדכון הדיווח בוטל', 'info');
+    showToast('בחירת היחידה בוטלה והטופס נשאר נצול למילוי', 'info');
 }
 
 function confirmDuplicateUpdate() {
     document.getElementById('already-submitted-modal').classList.add('hidden');
-    showToast('ניתן כעת לבצע שינויים בטופס הדיווח', 'warning');
+    state.isFormUnlockedForEdit = true;
+    setFormLocked(false);
+    recalculateValidation();
+    showToast('הטופס נפתח כעת לעריכה ולעדכון נתונים!', 'warning');
 }
 
 function showSuccessConfirmationModal(unitName, reportDate, quota) {
@@ -390,6 +424,7 @@ function setupCategoryListeners() {
 
 function stepVal(inputId, delta) {
     const input = document.getElementById(inputId);
+    if (input.disabled) return;
     let val = parseInt(input.value) || 0;
     val = Math.max(0, val + delta);
     input.value = val;
@@ -422,6 +457,13 @@ function recalculateValidation() {
     progressEl.style.width = `${percent}%`;
 
     counterCard.classList.remove('is-match', 'is-mismatch');
+
+    if (state.existingReportForSelectedUnit && !state.isFormUnlockedForEdit) {
+        counterCard.classList.add('is-mismatch');
+        msgEl.innerHTML = '<i class="fa-solid fa-lock"></i> היחידה כבר הגישה דיווח. הטופס נחסם למילוי שוב.';
+        submitBtn.disabled = true;
+        return;
+    }
 
     if (total === quota) {
         counterCard.classList.add('is-match');
