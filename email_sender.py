@@ -10,8 +10,10 @@ from email.mime.application import MIMEApplication
 
 TARGET_EMAIL = "noambasharti@gmail.com"
 
-# Resend API Key (Can be set via env var RESEND_API_KEY)
+# API Keys from Environment Variables
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
 
 # Fallback SMTP settings
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
@@ -19,9 +21,72 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 SMTP_USER = os.environ.get("SMTP_USER", "idf.damah.system@gmail.com")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
 
+def send_via_brevo_api(excel_io, report_date, recipient, total_units, total_quota, api_key):
+    """
+    Sends email with Excel attachment using Brevo API (No domain verification needed!)
+    """
+    try:
+        dt = datetime.datetime.strptime(report_date, '%Y-%m-%d')
+        formatted_date = dt.strftime('%d/%m/%Y')
+        filename = f"damah_aka_{dt.strftime('%d_%m_%Y')}.xlsx"
+    except Exception:
+        formatted_date = report_date
+        filename = f"damah_aka_{report_date}.xlsx"
+        
+    excel_io.seek(0)
+    file_bytes = excel_io.read()
+    b64_content = base64.b64encode(file_bytes).decode('utf-8')
+    
+    html_content = f"""
+    <div dir="rtl" style="font-family: Arial, sans-serif; color: #0f172a; padding: 20px; background-color: #f8fafc; border-radius: 12px;">
+        <h2 style="color: #0284c7;">📊 דו"ח דמ"ח אכ"א יומי מלא (100% דיווח)</h2>
+        <p style="font-size: 16px;">שלום נעם,</p>
+        <p style="font-size: 15px;">כל <strong>{total_units}</strong> יחידות אכ"א סיימו למלא את הדיווח היומי עבור תאריך <strong>{formatted_date}</strong> (100% התייצבות).</p>
+        <div style="background: #e0f2fe; padding: 15px; border-radius: 8px; border-right: 4px solid #0284c7; margin: 15px 0;">
+            <p style="margin: 0; font-weight: bold; color: #0369a1;">סה"כ מצבת אע"צים מדווחת: {total_quota} עובדים</p>
+        </div>
+        <p style="font-size: 15px;">מצורף קובץ האקסל הרשמי (XLSX) מעובד ומעוצב לפי פורמט דמ"ח תע"צ.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+        <p style="font-size: 13px; color: #64748b;">מערכת ניהול ובקרת אע"צים - אכ"א צה"ל 🛡️</p>
+    </div>
+    """
+    
+    payload = {
+        "sender": {"name": "מערכת דמ\"ח אכ\"א", "email": "damah.idf.system@gmail.com"},
+        "to": [{"email": recipient, "name": "נעם בשרטי"}],
+        "subject": f"📊 דו\"ח דמ\"ח אכ\"א יומי מלא (100% דיווח) - {formatted_date}",
+        "htmlContent": html_content,
+        "attachment": [
+            {
+                "name": filename,
+                "content": b64_content
+            }
+        ]
+    }
+    
+    req = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode('utf-8'),
+        headers={
+            "api-key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        },
+        method="POST"
+    )
+    
+    try:
+        with urllib.request.urlopen(req, timeout=12) as response:
+            res_data = json.loads(response.read().decode('utf-8'))
+            print(f"[BREVO SUCCESS] Email sent to {recipient}! Message ID: {res_data.get('messageId')}")
+            return True, f"קובץ האקסל נשלח בהצלחה למייל {recipient}!"
+    except Exception as e:
+        print(f"[BREVO ERROR] Failed to send via Brevo API: {e}")
+        return False, str(e)
+
 def send_via_resend_api(excel_io, report_date, recipient, total_units, total_quota, api_key):
     """
-    Sends email with Excel attachment using Resend HTTP API (No SMTP needed!)
+    Sends email with Excel attachment using Resend HTTP API
     """
     try:
         dt = datetime.datetime.strptime(report_date, '%Y-%m-%d')
@@ -75,8 +140,8 @@ def send_via_resend_api(excel_io, report_date, recipient, total_units, total_quo
     try:
         with urllib.request.urlopen(req, timeout=12) as response:
             res_data = json.loads(response.read().decode('utf-8'))
-            print(f"[RESEND SUCCESS] Email sent successfully to {recipient}! Resend ID: {res_data.get('id')}")
-            return True, "קובץ האקסל נשלח בהצלחה למייל שלך!"
+            print(f"[RESEND SUCCESS] Email sent to {recipient}! Resend ID: {res_data.get('id')}")
+            return True, f"קובץ האקסל נשלח בהצלחה למייל {recipient}!"
     except Exception as e:
         print(f"[RESEND ERROR] Failed to send via Resend API: {e}")
         return False, str(e)
@@ -117,7 +182,7 @@ def send_via_smtp(excel_io, report_date, recipient, total_units, total_quota):
     
     if not SMTP_PASS:
         print(f"[EMAIL NOTIFICATION TRIGGERED] 100% reporting reached for {report_date}! Target: {recipient}.")
-        return False, "התראת 100% הופעלה במערכת. יש להגדיר RESEND_API_KEY או SMTP_PASS בשרת לשליחה פעילה."
+        return False, "התראת 100% הופעלה במערכת. יש להגדיר מפתח API בשרת לשליחה פעילה."
         
     try:
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
@@ -133,12 +198,16 @@ def send_via_smtp(excel_io, report_date, recipient, total_units, total_quota):
 
 def send_damah_excel_email(excel_io, report_date, total_units, total_quota):
     """
-    Main entry point: Tries Resend HTTP API first, falls back to SMTP.
+    Main entry point: Tries Brevo -> Resend -> SMTP
     """
     recipient = os.environ.get("NOTIFICATION_EMAIL", TARGET_EMAIL)
-    api_key = os.environ.get("RESEND_API_KEY", RESEND_API_KEY)
     
-    if api_key:
-        return send_via_resend_api(excel_io, report_date, recipient, total_units, total_quota, api_key)
+    brevo_key = os.environ.get("BREVO_API_KEY", BREVO_API_KEY)
+    if brevo_key:
+        return send_via_brevo_api(excel_io, report_date, recipient, total_units, total_quota, brevo_key)
+        
+    resend_key = os.environ.get("RESEND_API_KEY", RESEND_API_KEY)
+    if resend_key:
+        return send_via_resend_api(excel_io, report_date, recipient, total_units, total_quota, resend_key)
     
     return send_via_smtp(excel_io, report_date, recipient, total_units, total_quota)

@@ -1,10 +1,4 @@
+database.db*
 __pycache__/
 *.pyc
-*.pyo
 cloudflared*
-*.tgz
-*.log
-*.err
-public_url.txt
-public_qr_code.png
-.DS_Store
