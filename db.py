@@ -8,9 +8,11 @@ DB_PATH = os.path.join(os.path.dirname(__file__), 'database.db')
 ISRAEL_TZ = ZoneInfo('Asia/Jerusalem')
 
 def get_israel_now():
-    return datetime.datetime.now(ISRAEL_TZ).strftime('%Y-%m-%d %H:%M:%S')
+    """Returns ISO format timestamp with explicit GMT+3 offset (+03:00)"""
+    return datetime.datetime.now(ISRAEL_TZ).isoformat()
 
 def get_israel_date():
+    """Returns YYYY-MM-DD in Israel Timezone"""
     return datetime.datetime.now(ISRAEL_TZ).strftime('%Y-%m-%d')
 
 DEFAULT_UNITS = [
@@ -226,7 +228,7 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
     
     existing = conn.execute('SELECT id, revision_count FROM daily_reports WHERE unit_id = ? AND report_date = ?', (unit_id, report_date)).fetchone()
     
-    now_israel = get_israel_now()
+    now_israel_iso = get_israel_now()
     is_update = False
     new_rev = 1
     if existing:
@@ -245,7 +247,7 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
             revision_count = daily_reports.revision_count + 1,
             submitted_by = excluded.submitted_by,
             updated_at = ?
-    ''', (unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, submitted_by, now_israel, now_israel, now_israel))
+    ''', (unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, submitted_by, now_israel_iso, now_israel_iso, now_israel_iso))
     
     conn.commit()
     conn.close()
@@ -253,4 +255,4 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
 
 if __name__ == '__main__':
     init_db()
-    print("Database initialized with Israel Timezone!")
+    print("Database updated with ISO Israel Timezone timestamps (+03:00)!")
