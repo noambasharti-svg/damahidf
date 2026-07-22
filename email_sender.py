@@ -15,15 +15,15 @@ BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
 
-# Fallback SMTP settings
+# SMTP settings
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
-SMTP_USER = os.environ.get("SMTP_USER", "idf.damah.system@gmail.com")
+SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
 
 def send_via_brevo_api(excel_io, report_date, recipient, total_units, total_quota, api_key):
     """
-    Sends email with Excel attachment using Brevo API (No domain verification needed!)
+    Sends email with Excel attachment using Brevo HTTP API
     """
     try:
         dt = datetime.datetime.strptime(report_date, '%Y-%m-%d')
@@ -33,26 +33,50 @@ def send_via_brevo_api(excel_io, report_date, recipient, total_units, total_quot
         formatted_date = report_date
         filename = f"damah_aka_{report_date}.xlsx"
         
-    excel_io.seek(0)
-    file_bytes = excel_io.read()
+    try:
+        file_bytes = excel_io.getvalue()
+    except Exception:
+        excel_io.seek(0)
+        file_bytes = excel_io.read()
+        
     b64_content = base64.b64encode(file_bytes).decode('utf-8')
     
     html_content = f"""
-    <div dir="rtl" style="font-family: Arial, sans-serif; color: #0f172a; padding: 20px; background-color: #f8fafc; border-radius: 12px;">
-        <h2 style="color: #0284c7;">📊 דו"ח דמ"ח אכ"א יומי מלא (100% דיווח)</h2>
-        <p style="font-size: 16px;">שלום נעם,</p>
-        <p style="font-size: 15px;">כל <strong>{total_units}</strong> יחידות אכ"א סיימו למלא את הדיווח היומי עבור תאריך <strong>{formatted_date}</strong> (100% התייצבות).</p>
-        <div style="background: #e0f2fe; padding: 15px; border-radius: 8px; border-right: 4px solid #0284c7; margin: 15px 0;">
-            <p style="margin: 0; font-weight: bold; color: #0369a1;">סה"כ מצבת אע"צים מדווחת: {total_quota} עובדים</p>
+    <div dir="rtl" style="font-family: Arial, sans-serif; color: #0f172a; padding: 25px; background-color: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 18px; border-radius: 12px; text-align: center; color: white;">
+            <h2 style="margin: 0; font-size: 22px;">📊 דו"ח דמ"ח אכ"א יומי מלא (100% דיווח)</h2>
+            <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">מערכת ניהול ובקרת נוכחות אע"צים - צה"ל 🛡️</p>
         </div>
-        <p style="font-size: 15px;">מצורף קובץ האקסל הרשמי (XLSX) מעובד ומעוצב לפי פורמט דמ"ח תע"צ.</p>
+        
+        <div style="padding: 20px 0;">
+            <p style="font-size: 16px; font-weight: bold; color: #0f172a;">שלום נעם,</p>
+            <p style="font-size: 15px; color: #334155; line-height: 1.6;">
+                כל <strong>{total_units}</strong> יחידות אכ"א סיימו למלא את הדיווח היומי עבור תאריך <strong>{formatted_date}</strong> (100% התייצבות מלאה).
+            </p>
+            
+            <div style="background: #e0f2fe; padding: 18px; border-radius: 12px; border-right: 5px solid #0284c7; margin: 20px 0;">
+                <p style="margin: 0; font-weight: bold; font-size: 16px; color: #0369a1;">סה"כ מצבת אע"צים מדווחת: {total_quota} עובדים</p>
+                <p style="margin: 5px 0 0 0; font-size: 13px; color: #0284c7;">100% מהיחידות מילאו בהצלחה ואימתו נתונים תואמים לתקן</p>
+            </div>
+            
+            <p style="font-size: 15px; color: #334155;">
+                מצורף למייל זה קובץ האקסל הרשמי (<strong>{filename}</strong>) מעובד, מחושב ומעוצב 100% לפי פורמט דמ"ח תע"צ.
+            </p>
+        </div>
+        
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-        <p style="font-size: 13px; color: #64748b;">מערכת ניהול ובקרת אע"צים - אכ"א צה"ל 🛡️</p>
+        
+        <div style="text-align: center; color: #64748b; font-size: 13px;">
+            <p style="margin: 0; font-weight: bold;">מערכת דמ"ח אכ"א האוטומטית 🛡️</p>
+            <p style="margin: 4px 0 0 0;">הודעה זו נשלחה באופן אוטומטי בעת הגעה ל-100% דיווח יומי</p>
+        </div>
     </div>
     """
     
+    sender_email = os.environ.get("BREVO_SENDER_EMAIL", "b2ebc1001@smtp-brevo.com")
+    
     payload = {
-        "sender": {"name": "מערכת דמ\"ח אכ\"א", "email": "damah.idf.system@gmail.com"},
+        "sender": {"name": "מערכת דמ\"ח אכ\"א צה\"ל", "email": sender_email},
         "to": [{"email": recipient, "name": "נעם בשרטי"}],
         "subject": f"📊 דו\"ח דמ\"ח אכ\"א יומי מלא (100% דיווח) - {formatted_date}",
         "htmlContent": html_content,
@@ -96,29 +120,19 @@ def send_via_resend_api(excel_io, report_date, recipient, total_units, total_quo
         formatted_date = report_date
         filename = f"damah_aka_{report_date}.xlsx"
         
-    excel_io.seek(0)
-    file_bytes = excel_io.read()
+    try:
+        file_bytes = excel_io.getvalue()
+    except Exception:
+        excel_io.seek(0)
+        file_bytes = excel_io.read()
+        
     b64_content = base64.b64encode(file_bytes).decode('utf-8')
-    
-    html_content = f"""
-    <div dir="rtl" style="font-family: Arial, sans-serif; color: #0f172a; padding: 20px; background-color: #f8fafc; border-radius: 12px;">
-        <h2 style="color: #0284c7;">📊 דו"ח דמ"ח אכ"א יומי מלא (100% דיווח)</h2>
-        <p style="font-size: 16px;">שלום נעם,</p>
-        <p style="font-size: 15px;">כל <strong>{total_units}</strong> יחידות אכ"א סיימו למלא את הדיווח היומי עבור תאריך <strong>{formatted_date}</strong> (100% התייצבות).</p>
-        <div style="background: #e0f2fe; padding: 15px; border-radius: 8px; border-right: 4px solid #0284c7; margin: 15px 0;">
-            <p style="margin: 0; font-weight: bold; color: #0369a1;">סה"כ מצבת אע"צים מדווחת: {total_quota} עובדים</p>
-        </div>
-        <p style="font-size: 15px;">מצורף קובץ האקסל הרשמי (XLSX) מעובד ומעוצב לפי פורמט דמ"ח תע"צ.</p>
-        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-        <p style="font-size: 13px; color: #64748b;">מערכת ניהול ובקרת אע"צים - אכ"א צה"ל 🛡️</p>
-    </div>
-    """
     
     payload = {
         "from": "Damah IDF System <onboarding@resend.dev>",
         "to": [recipient],
         "subject": f"📊 דו\"ח דמ\"ח אכ\"א יומי מלא (100% דיווח) - {formatted_date}",
-        "html": html_content,
+        "html": f"<p>שלום נעם, מצורף דו\"ח דמ\"ח אכ\"א מלא (100% דיווח) לתאריך {formatted_date}.</p>",
         "attachments": [
             {
                 "filename": filename,
@@ -159,35 +173,32 @@ def send_via_smtp(excel_io, report_date, recipient, total_units, total_quota):
         filename = f"damah_aka_{report_date}.xlsx"
         
     msg = MIMEMultipart()
-    msg['From'] = f"מערכת דמ\"ח אכ\"א <{SMTP_USER}>"
+    sender_email = SMTP_USER or recipient
+    msg['From'] = f"מערכת דמ\"ח אכ\"א <{sender_email}>"
     msg['To'] = recipient
     msg['Subject'] = f"📊 דו\"ח דמ\"ח אכ\"א יומי מלא (100% דיווח) - {formatted_date}"
     
-    body_text = f"""שלום נעם,
-
-כל {total_units} יחידות אכ"א סיימו למלא את הדיווח היומי עבור תאריך {formatted_date} (100% התייצבות).
-סה"כ מצבת אע"צים מדווחת: {total_quota} עובדים.
-
-מצורף קובץ האקסל הרשמי (XLSX) מעובד ומעוצב לפי פורמט דמ"ח תע"צ.
-
-בברכה,
-מערכת ניהול ובקרת אע"צים - אכ"א צה"ל 🛡️
-"""
+    body_text = f"שלום נעם,\n\nכל {total_units} יחידות אכ\"א סיימו למלא את הדיווח היומי עבור תאריך {formatted_date} (100% התייצבות).\nסה\"כ מצבת אע\"צים מדווחת: {total_quota} עובדים.\n\nמצורף קובץ האקסל הרשמי (XLSX) מעובד ומעוצב לפי פורמט דמ\"ח תע\"צ."
     msg.attach(MIMEText(body_text, 'plain', 'utf-8'))
     
-    excel_io.seek(0)
-    part = MIMEApplication(excel_io.read(), Name=filename)
+    try:
+        file_bytes = excel_io.getvalue()
+    except Exception:
+        excel_io.seek(0)
+        file_bytes = excel_io.read()
+        
+    part = MIMEApplication(file_bytes, Name=filename)
     part['Content-Disposition'] = f'attachment; filename="{filename}"'
     msg.attach(part)
     
     if not SMTP_PASS:
         print(f"[EMAIL NOTIFICATION TRIGGERED] 100% reporting reached for {report_date}! Target: {recipient}.")
-        return False, "התראת 100% הופעלה במערכת. יש להגדיר מפתח API בשרת לשליחה פעילה."
+        return False, "התראת 100% הופעלה במערכת."
         
     try:
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
         server.starttls()
-        server.login(SMTP_USER, SMTP_PASS)
+        server.login(sender_email, SMTP_PASS)
         server.send_message(msg)
         server.quit()
         print(f"[SMTP SUCCESS] Excel report successfully emailed to {recipient} for date {report_date}!")
@@ -202,12 +213,16 @@ def send_damah_excel_email(excel_io, report_date, total_units, total_quota):
     """
     recipient = os.environ.get("NOTIFICATION_EMAIL", TARGET_EMAIL)
     
-    brevo_key = os.environ.get("BREVO_API_KEY", BREVO_API_KEY)
+    brevo_key = os.environ.get("BREVO_API_KEY", "")
     if brevo_key:
-        return send_via_brevo_api(excel_io, report_date, recipient, total_units, total_quota, brevo_key)
-        
-    resend_key = os.environ.get("RESEND_API_KEY", RESEND_API_KEY)
+        ok, msg = send_via_brevo_api(excel_io, report_date, recipient, total_units, total_quota, brevo_key)
+        if ok:
+            return ok, msg
+            
+    resend_key = os.environ.get("RESEND_API_KEY", "")
     if resend_key:
-        return send_via_resend_api(excel_io, report_date, recipient, total_units, total_quota, resend_key)
+        ok, msg = send_via_resend_api(excel_io, report_date, recipient, total_units, total_quota, resend_key)
+        if ok:
+            return ok, msg
     
     return send_via_smtp(excel_io, report_date, recipient, total_units, total_quota)
