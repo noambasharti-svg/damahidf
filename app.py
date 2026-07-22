@@ -210,5 +210,6 @@ def export_excel():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
-    print("Serving Production Waitress WSGI server on http://0.0.0.0:5001...")
-    serve(app, host='0.0.0.0', port=5001, threads=16)
+    port = int(os.environ.get('PORT', 5001))
+    print(f"Serving Production Waitress WSGI server on port {port}...")
+    serve(app, host='0.0.0.0', port=port, threads=16)
