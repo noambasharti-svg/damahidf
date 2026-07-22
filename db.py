@@ -106,9 +106,11 @@ def init_db():
 
     # Migration check for revision_count column
     try:
-        cursor.execute('ALTER TABLE daily_reports ADD COLUMN revision_count INTEGER NOT NULL DEFAULT 1')
-    except Exception:
-        pass
+        cols = [c[1] for c in cursor.execute('PRAGMA table_info(daily_reports)').fetchall()]
+        if 'revision_count' not in cols:
+            cursor.execute('ALTER TABLE daily_reports ADD COLUMN revision_count INTEGER NOT NULL DEFAULT 1')
+    except Exception as e:
+        print("Migration info:", e)
     
     # Create users table
     cursor.execute('''
@@ -284,4 +286,4 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
 
 if __name__ == '__main__':
     init_db()
-    print("Database updated with email_logs table!")
+    print("Database updated safely with revision_count column!")
