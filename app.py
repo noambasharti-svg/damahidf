@@ -118,7 +118,7 @@ def remove_unit(unit_id):
 @app.route('/api/reports', methods=['GET'])
 def get_reports():
     try:
-        date_str = request.args.get('date', datetime.date.today().strftime('%Y-%m-%d'))
+        date_str = request.args.get('date', db.get_israel_date())
         reports = db.get_reports_for_date(date_str)
         
         total_units = len(reports)
@@ -131,7 +131,6 @@ def get_reports():
         total_standby = sum(r['standby_reduction'] or 0 for r in reports if r['is_submitted'])
         total_other = sum(r['other_absent'] or 0 for r in reports if r['is_submitted'])
         
-        # Build audit feed of updated reports
         updated_reports = [
             {
                 'unit_name': r['unit_name'],
@@ -171,7 +170,7 @@ def save_daily_report():
     try:
         data = request.json or {}
         unit_id = int(data.get('unit_id'))
-        report_date = data.get('report_date', datetime.date.today().strftime('%Y-%m-%d')).strip()
+        report_date = data.get('report_date', db.get_israel_date()).strip()
         
         present_base = int(data.get('present_base', 0))
         reserve = int(data.get('reserve', 0))
@@ -208,7 +207,7 @@ def save_daily_report():
 @admin_required
 def export_excel():
     try:
-        date_str = request.args.get('date', datetime.date.today().strftime('%Y-%m-%d'))
+        date_str = request.args.get('date', db.get_israel_date())
         reports = db.get_reports_for_date(date_str)
         
         excel_io = excel_exporter.generate_damah_excel(reports, date_str)
@@ -230,5 +229,5 @@ def export_excel():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    print(f"Serving Production Waitress WSGI server on port {port}...")
+    print(f"Serving Production Waitress WSGI server on port {port} (Israel Timezone)...")
     serve(app, host='0.0.0.0', port=port, threads=16)

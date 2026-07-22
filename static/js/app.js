@@ -24,27 +24,54 @@ async function initApp() {
     loadDashboardData();
 }
 
+/**
+ * Returns current date in Israel Timezone (GMT+2 / GMT+3 IDT)
+ * Format: YYYY-MM-DD
+ */
 function getTodayDateString() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    try {
+        const israelDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jerusalem' });
+        return israelDate;
+    } catch (e) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
 }
 
+/**
+ * Returns current time in Israel Timezone (GMT+2 / GMT+3 IDT)
+ * Format: HH:MM
+ */
 function formatTimeString(isoStr) {
-    if (!isoStr) {
+    try {
+        let dt;
+        if (!isoStr) {
+            dt = new Date();
+        } else {
+            // If ISO string doesn't specify timezone offset, assume UTC or parse safely
+            if (typeof isoStr === 'string' && !isoStr.includes('Z') && !isoStr.includes('+')) {
+                dt = new Date(isoStr.replace(' ', 'T') + 'Z');
+            } else {
+                dt = new Date(isoStr);
+            }
+        }
+        
+        if (isNaN(dt.getTime())) {
+            dt = new Date();
+        }
+
+        return dt.toLocaleTimeString('he-IL', {
+            timeZone: 'Asia/Jerusalem',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+    } catch (e) {
         const now = new Date();
         return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    }
-    try {
-        const dt = new Date(isoStr);
-        if (isNaN(dt.getTime())) return isoStr;
-        const hours = String(dt.getHours()).padStart(2, '0');
-        const mins = String(dt.getMinutes()).padStart(2, '0');
-        return `${hours}:${mins}`;
-    } catch (e) {
-        return isoStr;
     }
 }
 
@@ -312,7 +339,7 @@ function showDuplicateWarningModal(report) {
     const formattedTime = formatTimeString(report.updated_at || report.created_at);
 
     unitTitleEl.textContent = `יחידת ${report.unit_name}`;
-    timeTextEl.innerHTML = `יחידה זו כבר הגישה דיווח יומי עבור תאריך <strong>${report.report_date}</strong> בשעה <strong>${formattedTime}</strong>.<br>האם ברצונכם לעדכן/לשנות את הדיווח?`;
+    timeTextEl.innerHTML = `יחידה זו כבר הגישה דיווח יומי עבור תאריך <strong>${report.report_date}</strong> בשעה <strong>${formattedTime}</strong> (שעון ישראל).<br>האם ברצונכם לעדכן/לשנות את הדיווח?`;
     
     modal.classList.remove('hidden');
 }
@@ -556,7 +583,7 @@ function renderDashboardTable(reports) {
             <td>${isSub ? r.other_absent : '-'}</td>
             <td>${statusBadge}</td>
             <td>
-                <button class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.82rem;" onclick="quickEditReport(${r.unit_id})">
+                <button class="btn btn-outline" style="padding:0.35rem 0.7rem; font-size:0.84rem;" onclick="quickEditReport(${r.unit_id})">
                     <i class="fa-solid fa-pen-to-square"></i> ערוך
                 </button>
             </td>

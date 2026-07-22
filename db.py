@@ -1,8 +1,17 @@
 import sqlite3
 import hashlib
 import os
+import datetime
+from zoneinfo import ZoneInfo
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database.db')
+ISRAEL_TZ = ZoneInfo('Asia/Jerusalem')
+
+def get_israel_now():
+    return datetime.datetime.now(ISRAEL_TZ).strftime('%Y-%m-%d %H:%M:%S')
+
+def get_israel_date():
+    return datetime.datetime.now(ISRAEL_TZ).strftime('%Y-%m-%d')
 
 DEFAULT_UNITS = [
     {'sid': 1, 'authority': 'אכ"א', 'unit_name': 'גלי צה״ל', 'quota': 85},
@@ -75,8 +84,8 @@ def init_db():
             standby_reduction INTEGER NOT NULL DEFAULT 0,
             other_absent INTEGER NOT NULL DEFAULT 0,
             revision_count INTEGER NOT NULL DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
             submitted_by TEXT DEFAULT '',
             FOREIGN KEY (unit_id) REFERENCES units (id),
             UNIQUE(unit_id, report_date)
@@ -205,7 +214,6 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Get unit quota
     unit = conn.execute('SELECT quota FROM units WHERE id = ?', (unit_id,)).fetchone()
     if not unit:
         conn.close()
@@ -216,9 +224,9 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
         conn.close()
         raise ValueError(f'סך העובדים שדווחו ({total_reported}) אינו תואם למצבה הקבועה של היחידה ({unit["quota"]})')
     
-    # Check if report already exists for revision count
     existing = conn.execute('SELECT id, revision_count FROM daily_reports WHERE unit_id = ? AND report_date = ?', (unit_id, report_date)).fetchone()
     
+    now_israel = get_israel_now()
     is_update = False
     new_rev = 1
     if existing:
@@ -226,8 +234,8 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
         new_rev = (existing['revision_count'] or 1) + 1
         
     cursor.execute('''
-        INSERT INTO daily_reports (unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, revision_count, submitted_by, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)
+        INSERT INTO daily_reports (unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, revision_count, submitted_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
         ON CONFLICT(unit_id, report_date) DO UPDATE SET
             present_base = excluded.present_base,
             reserve = excluded.reserve,
@@ -236,8 +244,8 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
             other_absent = excluded.other_absent,
             revision_count = daily_reports.revision_count + 1,
             submitted_by = excluded.submitted_by,
-            updated_at = CURRENT_TIMESTAMP
-    ''', (unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, submitted_by))
+            updated_at = ?
+    ''', (unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, submitted_by, now_israel, now_israel, now_israel))
     
     conn.commit()
     conn.close()
@@ -245,4 +253,4 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
 
 if __name__ == '__main__':
     init_db()
-    print("WAL Mode Database with revision tracking initialized successfully!")
+    print("Database initialized with Israel Timezone!")
