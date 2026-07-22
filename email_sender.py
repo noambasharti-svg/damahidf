@@ -73,7 +73,7 @@ def send_via_brevo_api(excel_io, report_date, recipient, total_units, total_quot
     </div>
     """
     
-    sender_email = os.environ.get("BREVO_SENDER_EMAIL", "b2ebc1001@smtp-brevo.com")
+    sender_email = os.environ.get("BREVO_SENDER_EMAIL", recipient)
     
     payload = {
         "sender": {"name": "מערכת דמ\"ח אכ\"א צה\"ל", "email": sender_email},
