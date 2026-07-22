@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת דיווח אע"צים יומי - צה"ל (דמ"ח)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>מערכת דיווח אע"צים יומי</h1>
+                    <p class="subtitle">ניהול ובקרת נוכחות אזרחים עובדי צה"ל (דמ"ח)</p>
+                </div>
+            </div>
+
+            <nav class="app-nav">
+                <button class="nav-btn active" data-tab="report-tab">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                    <span>דיווח יומי יחידתי</span>
+                </button>
+                <button class="nav-btn" data-tab="dashboard-tab" id="nav-btn-dash">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>דשבורד מנהלים</span>
+                    <i class="fa-solid fa-lock lock-icon" id="dash-lock-icon"></i>
+                </button>
+                <button class="nav-btn" data-tab="quotas-tab" id="nav-btn-quotas">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>ניהול תקני יחידות</span>
+                    <i class="fa-solid fa-lock lock-icon" id="quotas-lock-icon"></i>
+                </button>
+            </nav>
+
+            <div class="user-status-box" id="user-status-box">
+                <button class="btn btn-outline-white" id="login-trigger-btn" onclick="openLoginModal()">
+                    <i class="fa-solid fa-user-lock"></i> התחברות מנהלים
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+
+        <!-- TAB 1: DAILY REPORT FORM -->
+        <section id="report-tab" class="tab-pane active">
+            <div class="card form-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-clipboard-user"></i> טופס דיווח סטטוס יומי ליחידה</h2>
+                    <span class="badge badge-info"><i class="fa-solid fa-lock"></i> חובה להתאים בדיוק לתקן היחידה</span>
+                </div>
+
+                <div class="form-row date-unit-selection">
+                    <div class="form-group">
+                        <label for="report-date-input"><i class="fa-regular fa-calendar"></i> תאריך הדיווח:</label>
+                        <input type="date" id="report-date-input" class="form-control">
+                    </div>
+
+                    <div class="form-group flex-2">
+                        <label for="unit-select"><i class="fa-solid fa-building"></i> לבחירת יחידה:</label>
+                        <select id="unit-select" class="form-control">
+                            <option value="">-- בחר יחידה מהרשימה --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group quota-badge-container">
+                        <div class="quota-pill" id="unit-quota-pill">
+                            <span class="label">מצבות כ"א סה"כ:</span>
+                            <span class="value" id="unit-quota-val">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Fields Grid -->
+                <div class="report-inputs-grid hidden" id="report-inputs-grid">
+                    
+                    <div class="input-card present">
+                        <div class="input-card-header">
+                            <i class="fa-solid fa-building-user icon"></i>
+                            <div class="title">התייצבו</div>
+                            <div class="subtitle">נוכחים פיזית בבסיס/ביחידה</div>
+                        </div>
+                        <div class="number-input-wrapper">
+                            <button class="btn-step minus" onclick="stepVal('present-base', -1)"><i class="fa-solid fa-minus"></i></button>
+                            <input type="number" id="present-base" class="category-input" min="0" value="0">
+                            <button class="btn-step plus" onclick="stepVal('present-base', 1)"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="input-card reserve">
+                        <div class="input-card-header">
+                            <i class="fa-solid fa-person-military-rifle icon"></i>
+                            <div class="title">מילואים</div>
+                            <div class="subtitle">באימון / שירות מילואים פעיל</div>
+                        </div>
+                        <div class="number-input-wrapper">
+                            <button class="btn-step minus" onclick="stepVal('reserve', -1)"><i class="fa-solid fa-minus"></i></button>
+                            <input type="number" id="reserve" class="category-input" min="0" value="0">
+                            <button class="btn-step plus" onclick="stepVal('reserve', 1)"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="input-card wfh">
+                        <div class="input-card-header">
+                            <i class="fa-solid fa-house-laptop icon"></i>
+                            <div class="title">עבודה מהבית</div>
+                            <div class="subtitle">עבודה מרחוק בהגדרת תוא"ר</div>
+                        </div>
+                        <div class="number-input-wrapper">
+                            <button class="btn-step minus" onclick="stepVal('work-from-home', -1)"><i class="fa-solid fa-minus"></i></button>
+                            <input type="number" id="work-from-home" class="category-input" min="0" value="0">
+                            <button class="btn-step plus" onclick="stepVal('work-from-home', 1)"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="input-card standby">
+                        <div class="input-card-header">
+                            <i class="fa-solid fa-user-clock icon"></i>
+                            <div class="title">רידוד סד"כ</div>
+                            <div class="subtitle">כוננות / רידוד מאושר</div>
+                        </div>
+                        <div class="number-input-wrapper">
+                            <button class="btn-step minus" onclick="stepVal('standby-reduction', -1)"><i class="fa-solid fa-minus"></i></button>
+                            <input type="number" id="standby-reduction" class="category-input" min="0" value="0">
+                            <button class="btn-step plus" onclick="stepVal('standby-reduction', 1)"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="input-card other">
+                        <div class="input-card-header">
+                            <i class="fa-solid fa-user-slash icon"></i>
+                            <div class="title">לא נוכח מסיבות אחרות</div>
+                            <div class="subtitle">מחלה, חופשה, היעדרות מאושרת</div>
+                        </div>
+                        <div class="number-input-wrapper">
+                            <button class="btn-step minus" onclick="stepVal('other-absent', -1)"><i class="fa-solid fa-minus"></i></button>
+                            <input type="number" id="other-absent" class="category-input" min="0" value="0">
+                            <button class="btn-step plus" onclick="stepVal('other-absent', 1)"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Validation Status Banner & Auto-fill -->
+                <div class="validation-wrapper hidden" id="validation-wrapper">
+                    <div class="validation-counter-card" id="validation-counter-card">
+                        <div class="gauge-info">
+                            <span class="label">סה"כ מדווח בטופס:</span>
+                            <span class="total-count" id="reported-total">0</span>
+                            <span class="slash">/</span>
+                            <span class="quota-count" id="target-quota">0</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="validation-progress"></div>
+                        </div>
+                        <div class="validation-msg" id="validation-msg">
+                            בחר יחידה והזן נתונים
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" id="auto-fill-btn" onclick="autoFillRemaining()">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> השלם יתרה אוטומטית ל"לא נוכח"
+                        </button>
+                        
+                        <button class="btn btn-primary" id="submit-report-btn" disabled onclick="submitDailyReport()">
+                            <i class="fa-solid fa-paper-plane"></i> שלח דיווח יומי
+                        </button>
+                    </div>
+                </div>
+
+                <div class="no-unit-selected" id="no-unit-placeholder">
+                    <i class="fa-solid fa-hand-pointer"></i>
+                    <p>נא לבחור יחידה ותאריך כדי להתחיל במילוי הדיווח היומי</p>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- TAB 2: ADMIN DASHBOARD & SUMMARY -->
+        <section id="dashboard-tab" class="tab-pane">
+            
+            <!-- Dashboard Controls -->
+            <div class="dashboard-controls-bar card">
+                <div class="control-group">
+                    <label for="dash-date-picker"><i class="fa-regular fa-calendar-days"></i> תאריך לתצוגה:</label>
+                    <input type="date" id="dash-date-picker" class="form-control">
+                    <button class="btn btn-outline" onclick="setDashToday()"><i class="fa-solid fa-clock-rotate-left"></i> היום</button>
+                </div>
+
+                <div class="control-group actions">
+                    <button class="btn btn-excel" onclick="exportToExcel()">
+                        <i class="fa-solid fa-file-excel"></i> ייצא דמ"ח באקסל (XLSX)
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI Cards Grid -->
+            <div class="kpi-grid">
+                <div class="kpi-card total-employees">
+                    <div class="kpi-icon"><i class="fa-solid fa-users"></i></div>
+                    <div class="kpi-content">
+                        <span class="kpi-title">סה"כ מצבת אע"צים</span>
+                        <span class="kpi-value" id="kpi-total-quota">0</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card present-base">
+                    <div class="kpi-icon"><i class="fa-solid fa-building-circle-check"></i></div>
+                    <div class="kpi-content">
+                        <span class="kpi-title">התייצבו בבסיסים</span>
+                        <span class="kpi-value" id="kpi-present">0</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card wfh-reserve">
+                    <div class="kpi-icon"><i class="fa-solid fa-laptop-house"></i></div>
+                    <div class="kpi-content">
+                        <span class="kpi-title">עבודה מהבית / מילואים</span>
+                        <span class="kpi-value" id="kpi-remote">0</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card reporting-rate">
+                    <div class="kpi-icon"><i class="fa-solid fa-square-check"></i></div>
+                    <div class="kpi-content">
+                        <span class="kpi-title">אחוז יחידות שדיוו</span>
+                        <span class="kpi-value" id="kpi-percent">0%</span>
+                        <span class="kpi-sub" id="kpi-units-ratio">0/0 יחידות</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card table-card">
+                <div class="table-header-tools">
+                    <h3><i class="fa-solid fa-list-check"></i> תמונת מצב יחידתית יומית</h3>
+                    <div class="search-filter-box">
+                        <div class="search-wrapper">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="dash-search" placeholder="חפש יחידה..." oninput="filterDashTable()">
+                        </div>
+                        <select id="dash-status-filter" class="form-control" onchange="filterDashTable()">
+                            <option value="all">כל היחידות</option>
+                            <option value="submitted">דיווחו בלבד</option>
+                            <option value="pending">טרם דיווחו בלבד</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="damah-table" id="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>מס״ד</th>
+                                <th>סמכות</th>
+                                <th>יחידה מסגרת</th>
+                                <th>מצבות כ"א סה"כ</th>
+                                <th>התייצבו</th>
+                                <th>מילואים</th>
+                                <th>עבודה מהבית</th>
+                                <th>רידוד סד"כ</th>
+                                <th>לא נוכח מסיבות אחרות</th>
+                                <th>סטטוס דיווח</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                        <tfoot id="dashboard-table-foot">
+                            <!-- Total summary row injected via JS -->
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- TAB 3: QUOTA MANAGER -->
+        <section id="quotas-tab" class="tab-pane">
+            <div class="card table-card">
+                <div class="table-header-tools">
+                    <div>
+                        <h2><i class="fa-solid fa-sliders"></i> ניהול תקני אע"צים קבועים ליחידות</h2>
+                        <p class="subtitle">הגדרת סך כל העובדים ששייכים לכל יחידה (מצבת כ"א סה"כ הקבועה)</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAddUnitModal()">
+                        <i class="fa-solid fa-plus"></i> הוסף יחידה חדשה
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="damah-table" id="quotas-table">
+                        <thead>
+                            <tr>
+                                <th>מס״ד</th>
+                                <th>סמכות</th>
+                                <th>יחידה מסגרת</th>
+                                <th>מצבות כ"א סה"כ (תקן קבוע)</th>
+                                <th>פעולות עריכה</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quotas-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ADMIN LOGIN MODAL -->
+    <div class="modal-backdrop hidden" id="login-modal">
+        <div class="modal-box login-modal-box">
+            <div class="modal-header login-header">
+                <h3><i class="fa-solid fa-user-shield"></i> התחברות מנהלים</h3>
+                <button class="modal-close" onclick="closeLoginModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="login-intro">גישה לדשבורד מנהלים ולעריכת תקנים מותרת למשתמשים מורשים בלבד.</p>
+                <div class="form-group">
+                    <label for="login-username"><i class="fa-solid fa-user"></i> שם משתמש:</label>
+                    <select id="login-username" class="form-control">
+                        <option value="נעם בשרטי">נעם בשרטי</option>
+                        <option value="רינה נוגה בקר">רינה נוגה בקר</option>
+                        <option value="יהלי סבן">יהלי סבן</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="login-password"><i class="fa-solid fa-key"></i> סיסמה:</label>
+                    <input type="password" id="login-password" class="form-control" placeholder="הזן סיסמה..." onkeyup="if(event.key==='Enter') executeLogin()">
+                </div>
+                <div class="login-error hidden" id="login-error-msg"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeLoginModal()">ביטול</button>
+                <button class="btn btn-primary" onclick="executeLogin()"><i class="fa-solid fa-right-to-bracket"></i> התחבר למערכת</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Unit Creation / Edit -->
+    <div class="modal-backdrop hidden" id="unit-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modal-title">הוספת/עריכת יחידה</h3>
+                <button class="modal-close" onclick="closeUnitModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modal-unit-id">
+                <div class="form-group">
+                    <label for="modal-sid">מס"ד:</label>
+                    <input type="number" id="modal-sid" class="form-control" min="1" value="1">
+                </div>
+                <div class="form-group">
+                    <label for="modal-authority">סמכות:</label>
+                    <input type="text" id="modal-authority" class="form-control" value='אכ"א'>
+                </div>
+                <div class="form-group">
+                    <label for="modal-unit-name">שם יחידה מסגרת:</label>
+                    <input type="text" id="modal-unit-name" class="form-control" placeholder="הזן שם יחידה...">
+                </div>
+                <div class="form-group">
+                    <label for="modal-quota">מצבות כ"א סה"כ (תקן אע"צים קבוע):</label>
+                    <input type="number" id="modal-quota" class="form-control" min="0" value="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeUnitModal()">ביטול</button>
+                <button class="btn btn-primary" onclick="saveUnitModal()">שמור שינויים</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast hidden" id="toast"></div>
+
+    <!-- JavaScript Bundle -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
