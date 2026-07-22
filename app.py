@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, send_file, session
 import db
 import excel_exporter
+import email_sender
 import datetime
 import os
 from functools import wraps
@@ -152,7 +153,8 @@ def get_reports():
             'total_reserve': total_reserve,
             'total_wfh': total_wfh,
             'total_standby': total_standby,
-            'total_other': total_other
+            'total_other': total_other,
+            'is_email_sent': db.is_email_sent_for_date(date_str)
         }
         
         return jsonify({
@@ -191,11 +193,35 @@ def save_daily_report():
                 
         is_update, new_rev = db.save_report(unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, submitted_by)
         
+        # Check if 100% completion reached for auto Excel email dispatch!
+        all_reports = db.get_reports_for_date(report_date)
+        total_units = len(all_reports)
+        submitted_units = sum(1 for r in all_reports if r['is_submitted'])
+        
+        is_100_percent = (total_units > 0 and submitted_units == total_units)
+        email_sent = False
+        email_status_msg = ""
+        
+        if is_100_percent:
+            try:
+                excel_io = excel_exporter.generate_damah_excel(all_reports, report_date)
+                total_quota = sum(r['quota'] for r in all_reports)
+                sent_ok, email_status_msg = email_sender.send_damah_excel_email(excel_io, report_date, total_units, total_quota)
+                if sent_ok:
+                    db.mark_email_sent_for_date(report_date, 'noambasharti@gmail.com')
+                    email_sent = True
+            except Exception as ee:
+                print("Auto-email exception:", ee)
+                email_status_msg = str(ee)
+        
         msg = 'הדיווח היומי עודכן בהצלחה!' if is_update else 'הדיווח היומי נשמר בהצלחה!'
         return jsonify({
             'success': True,
             'is_update': is_update,
             'revision_count': new_rev,
+            'is_100_percent': is_100_percent,
+            'email_sent': email_sent,
+            'email_status_msg': email_status_msg,
             'message': msg
         })
     except ValueError as ve:
@@ -229,5 +255,5 @@ def export_excel():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    print(f"Serving Production Waitress WSGI server on port {port} (Israel Timezone)...")
+    print(f"Serving Production Waitress WSGI server on port {port} with 100% Auto-Email feature...")
     serve(app, host='0.0.0.0', port=port, threads=16)

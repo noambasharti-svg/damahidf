@@ -94,6 +94,16 @@ def init_db():
         )
     ''')
 
+    # Create email_logs table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS email_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_date TEXT UNIQUE,
+            sent_at TEXT,
+            recipient TEXT
+        )
+    ''')
+
     # Migration check for revision_count column
     try:
         cursor.execute('ALTER TABLE daily_reports ADD COLUMN revision_count INTEGER NOT NULL DEFAULT 1')
@@ -132,6 +142,25 @@ def init_db():
                 full_name = excluded.full_name
         ''', (user['username'], pwd_h, user['full_name']))
         
+    conn.commit()
+    conn.close()
+
+def is_email_sent_for_date(report_date):
+    conn = get_db_connection()
+    row = conn.execute('SELECT id FROM email_logs WHERE report_date = ?', (report_date,)).fetchone()
+    conn.close()
+    return bool(row)
+
+def mark_email_sent_for_date(report_date, recipient='noambasharti@gmail.com'):
+    conn = get_db_connection()
+    now_israel = get_israel_now()
+    conn.execute('''
+        INSERT INTO email_logs (report_date, sent_at, recipient)
+        VALUES (?, ?, ?)
+        ON CONFLICT(report_date) DO UPDATE SET
+            sent_at = excluded.sent_at,
+            recipient = excluded.recipient
+    ''', (report_date, now_israel, recipient))
     conn.commit()
     conn.close()
 
@@ -255,4 +284,4 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
 
 if __name__ == '__main__':
     init_db()
-    print("Database updated with ISO Israel Timezone timestamps (+03:00)!")
+    print("Database updated with email_logs table!")
