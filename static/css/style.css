@@ -476,6 +476,16 @@ body {
     transform: translateY(-1px);
 }
 
+.btn-warning {
+    background: #d97706;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+}
+.btn-warning:hover:not(:disabled) {
+    background: #b45309;
+    transform: translateY(-1px);
+}
+
 .btn-secondary {
     background: #e2e8f0;
     color: var(--text-main);
@@ -510,7 +520,41 @@ body {
 .no-unit-selected i { font-size: 3rem; margin-bottom: 1rem; color: #cbd5e1; }
 .hidden { display: none !important; }
 
-/* Dashboard Styling */
+/* Audit Feed Banner */
+.audit-feed-card {
+    background: #fffbebf5;
+    border: 1.5px solid #fde68a;
+    border-radius: var(--radius-md);
+    padding: 1.2rem 1.6rem;
+    margin-bottom: 1.5rem;
+}
+
+.audit-feed-header {
+    font-weight: 700;
+    color: #b45309;
+    font-size: 0.98rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+}
+
+.audit-feed-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.audit-feed-item {
+    background: #ffffff;
+    border: 1px solid #fcd34d;
+    padding: 0.4rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #92400e;
+    box-shadow: var(--shadow-sm);
+
 .dashboard-controls-bar {
     display: flex;
     justify-content: space-between;
@@ -640,13 +684,17 @@ body {
 }
 
 .status-badge {
-    padding: 0.25rem 0.6rem;
+    padding: 0.25rem 0.64rem;
     border-radius: 12px;
     font-size: 0.8rem;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
 }
 .status-badge.submitted { background: var(--success-light); color: var(--success); }
 .status-badge.pending { background: var(--warning-light); color: var(--warning); }
+.status-badge.updated { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 
 /* Modal */
 .modal-backdrop {
@@ -668,6 +716,49 @@ body {
     box-shadow: var(--shadow-lg);
     overflow: hidden;
     animation: modalPop 0.2s ease;
+}
+
+.alert-modal-box {
+    max-width: 500px;
+}
+
+.warning-header {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    color: #ffffff;
+}
+
+.warning-dialog-icon {
+    font-size: 3.5rem;
+    color: #d97706;
+    text-align: center;
+    margin: 0.5rem 0;
+}
+
+.warning-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    text-align: center;
+    color: var(--text-main);
+}
+
+.warning-desc {
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.warning-notice-box {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
 }
 
 @keyframes modalPop {

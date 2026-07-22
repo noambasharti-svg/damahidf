@@ -131,11 +131,22 @@ def get_reports():
         total_standby = sum(r['standby_reduction'] or 0 for r in reports if r['is_submitted'])
         total_other = sum(r['other_absent'] or 0 for r in reports if r['is_submitted'])
         
+        # Build audit feed of updated reports
+        updated_reports = [
+            {
+                'unit_name': r['unit_name'],
+                'updated_at': r['updated_at'],
+                'revision_count': r['revision_count']
+            }
+            for r in reports if r['is_submitted'] and r.get('revision_count', 1) > 1
+        ]
+        
         stats = {
             'date': date_str,
             'total_units': total_units,
             'submitted_units': submitted_units,
             'pending_units': total_units - submitted_units,
+            'updated_count': len(updated_reports),
             'completion_percent': round((submitted_units / total_units * 100), 1) if total_units > 0 else 0,
             'total_quota': total_quota,
             'total_present': total_present,
@@ -149,6 +160,7 @@ def get_reports():
             'success': True,
             'stats': stats,
             'reports': reports,
+            'updated_reports': updated_reports,
             'is_admin': bool(session.get('user'))
         })
     except Exception as e:
@@ -178,8 +190,15 @@ def save_daily_report():
             if val < 0:
                 return jsonify({'success': False, 'error': f'ערך {val_name} אינו יכול להיות שלילי'}), 400
                 
-        db.save_report(unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, submitted_by)
-        return jsonify({'success': True, 'message': 'הדיווח נשמר בהצלחה!'})
+        is_update, new_rev = db.save_report(unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, submitted_by)
+        
+        msg = 'הדיווח היומי עודכן בהצלחה!' if is_update else 'הדיווח היומי נשמר בהצלחה!'
+        return jsonify({
+            'success': True,
+            'is_update': is_update,
+            'revision_count': new_rev,
+            'message': msg
+        })
     except ValueError as ve:
         return jsonify({'success': False, 'error': str(ve)}), 400
     except Exception as e:

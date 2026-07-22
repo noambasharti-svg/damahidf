@@ -7,7 +7,8 @@ let state = {
     dashReports: [],
     dashStats: {},
     currentUser: null,
-    pendingTabId: null
+    pendingTabId: null,
+    existingReportForSelectedUnit: null
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,6 +30,19 @@ function getTodayDateString() {
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function formatTimeString(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const dt = new Date(isoStr);
+        if (isNaN(dt.getTime())) return isoStr;
+        const hours = String(dt.getHours()).padStart(2, '0');
+        const mins = String(dt.getMinutes()).padStart(2, '0');
+        return `${hours}:${mins}`;
+    } catch (e) {
+        return isoStr;
+    }
 }
 
 /* -------------------------------------------------------------------
@@ -139,7 +153,6 @@ async function executeLogout() {
         updateUserUI();
         showToast('התנתקת בהצלחה', 'info');
 
-        // If currently on protected tab, switch back to daily report tab
         const activeTab = document.querySelector('.tab-pane.active').id;
         if (activeTab === 'dashboard-tab' || activeTab === 'quotas-tab') {
             switchTab('report-tab');
@@ -158,7 +171,6 @@ function setupTabNavigation() {
         btn.addEventListener('click', () => {
             const tabId = btn.getAttribute('data-tab');
 
-            // Protected Tabs check
             if ((tabId === 'dashboard-tab' || tabId === 'quotas-tab') && !state.currentUser) {
                 openLoginModal(tabId);
                 return;
@@ -268,12 +280,17 @@ async function fetchUnitReportForDate() {
         const data = await res.json();
         if (data.success) {
             const report = data.reports.find(r => r.unit_id === state.selectedUnit.id);
-            if (report && report.is_submitted) {
+            state.existingReportForSelectedUnit = (report && report.is_submitted) ? report : null;
+
+            if (state.existingReportForSelectedUnit) {
                 document.getElementById('present-base').value = report.present_base;
                 document.getElementById('reserve').value = report.reserve;
                 document.getElementById('work-from-home').value = report.work_from_home;
                 document.getElementById('standby-reduction').value = report.standby_reduction;
                 document.getElementById('other-absent').value = report.other_absent;
+
+                // Open Warning Popup Modal for duplicate submission!
+                showDuplicateWarningModal(report);
             } else {
                 resetCategoryInputs();
             }
@@ -283,6 +300,32 @@ async function fetchUnitReportForDate() {
         resetCategoryInputs();
         recalculateValidation();
     }
+}
+
+function showDuplicateWarningModal(report) {
+    const unitTitleEl = document.getElementById('already-submitted-unit-title');
+    const timeTextEl = document.getElementById('already-submitted-time-text');
+    const modal = document.getElementById('already-submitted-modal');
+
+    const formattedTime = formatTimeString(report.updated_at || report.created_at);
+
+    unitTitleEl.textContent = `יחידת ${report.unit_name}`;
+    timeTextEl.innerHTML = `יחידה זו כבר הגישה דיווח יומי עבור תאריך <strong>${report.report_date}</strong> בשעה <strong>${formattedTime}</strong>.<br>האם ברצונכם לעדכן/לשנות את הדיווח?`;
+    
+    modal.classList.remove('hidden');
+}
+
+function cancelDuplicateModal() {
+    document.getElementById('already-submitted-modal').classList.add('hidden');
+    // Reset unit dropdown to avoid unintentional changes
+    document.getElementById('unit-select').value = '';
+    document.getElementById('unit-select').dispatchEvent(new Event('change'));
+    showToast('עדכון הדיווח בוטל', 'info');
+}
+
+function confirmDuplicateUpdate() {
+    document.getElementById('already-submitted-modal').classList.add('hidden');
+    showToast('ניתן כעת לבצע שינויים בטופס הדיווח', 'warning');
 }
 
 function resetCategoryInputs() {
@@ -398,7 +441,11 @@ async function submitDailyReport() {
 
         const data = await res.json();
         if (data.success) {
-            showToast('הדיווח היומי נשמר בהצלחה!', 'success');
+            if (data.is_update) {
+                showToast(`דיווח יחידת ${state.selectedUnit.unit_name} עודכן בהצלחה! התראה נשלחה לדשבורד.`, 'warning');
+            } else {
+                showToast('הדיווח היומי נשמר בהצלחה!', 'success');
+            }
             loadDashboardData();
         } else {
             showToast(data.error || 'שגיאה בשמירת הדיווח', 'danger');
@@ -419,6 +466,7 @@ async function loadDashboardData() {
             state.dashStats = data.stats;
             state.dashReports = data.reports;
             renderDashboardKPIs(data.stats);
+            renderDashboardAuditFeed(data.updated_reports);
             renderDashboardTable(data.reports);
         }
     } catch (err) {
@@ -440,6 +488,27 @@ function renderDashboardKPIs(stats) {
     document.getElementById('kpi-units-ratio').textContent = `${stats.submitted_units}/${stats.total_units} יחידות`;
 }
 
+function renderDashboardAuditFeed(updatedReports) {
+    const feedContainer = document.getElementById('dashboard-alerts-feed');
+    const feedList = document.getElementById('audit-feed-list');
+
+    if (!updatedReports || updatedReports.length === 0) {
+        feedContainer.classList.add('hidden');
+        return;
+    }
+
+    feedContainer.classList.remove('hidden');
+    feedList.innerHTML = '';
+
+    updatedReports.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'audit-feed-item';
+        const formattedTime = formatTimeString(r.updated_at);
+        item.innerHTML = `<i class="fa-solid fa-pen"></i> יחידת <strong>${r.unit_name}</strong> עדכנה את הדיווח בשעה <strong>${formattedTime}</strong>`;
+        feedList.appendChild(item);
+    });
+}
+
 function renderDashboardTable(reports) {
     const tbody = document.getElementById('dashboard-table-body');
     const tfoot = document.getElementById('dashboard-table-foot');
@@ -454,6 +523,17 @@ function renderDashboardTable(reports) {
     reports.forEach(r => {
         const tr = document.createElement('tr');
         const isSub = r.is_submitted;
+        const revCount = r.revision_count || 1;
+        const formattedTime = formatTimeString(r.updated_at || r.created_at);
+
+        let statusBadge = '<span class="status-badge pending"><i class="fa-solid fa-clock"></i> טרם דיווחה</span>';
+        if (isSub) {
+            if (revCount > 1) {
+                statusBadge = `<span class="status-badge updated" title="שינוי דיווח מס' ${revCount}"><i class="fa-solid fa-pen-to-square"></i> עודכן (${formattedTime})</span>`;
+            } else {
+                statusBadge = `<span class="status-badge submitted"><i class="fa-solid fa-check"></i> דיווחה (${formattedTime})</span>`;
+            }
+        }
 
         tr.innerHTML = `
             <td>${r.sid}</td>
@@ -465,11 +545,7 @@ function renderDashboardTable(reports) {
             <td>${isSub ? r.work_from_home : '-'}</td>
             <td>${isSub ? r.standby_reduction : '-'}</td>
             <td>${isSub ? r.other_absent : '-'}</td>
-            <td>
-                ${isSub 
-                    ? '<span class="status-badge submitted"><i class="fa-solid fa-check"></i> דיווחה</span>' 
-                    : '<span class="status-badge pending"><i class="fa-solid fa-clock"></i> טרם דיווחה</span>'}
-            </td>
+            <td>${statusBadge}</td>
             <td>
                 <button class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.82rem;" onclick="quickEditReport(${r.unit_id})">
                     <i class="fa-solid fa-pen-to-square"></i> ערוך
@@ -504,6 +580,7 @@ function filterDashTable() {
         let matchesStatus = true;
         if (filter === 'submitted') matchesStatus = r.is_submitted === 1;
         if (filter === 'pending') matchesStatus = r.is_submitted === 0;
+        if (filter === 'updated') matchesStatus = r.is_submitted === 1 && (r.revision_count || 1) > 1;
 
         return matchesName && matchesStatus;
     });
@@ -515,7 +592,6 @@ function quickEditReport(unitId) {
     state.reportDate = state.dashDate;
     document.getElementById('report-date-input').value = state.reportDate;
 
-    // Switch to report tab
     switchTab('report-tab');
 
     const select = document.getElementById('unit-select');

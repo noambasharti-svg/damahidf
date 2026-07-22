@@ -209,6 +209,17 @@
                 </div>
             </div>
 
+            <!-- Audit Alert Feed Banner -->
+            <div class="audit-feed-card card hidden" id="dashboard-alerts-feed">
+                <div class="audit-feed-header">
+                    <i class="fa-solid fa-bell"></i>
+                    <span>התראות דיווחים ששינו/עדכנו נתונים היום:</span>
+                </div>
+                <div class="audit-feed-list" id="audit-feed-list">
+                    <!-- Dynamic audit alerts -->
+                </div>
+            </div>
+
             <!-- KPI Cards Grid -->
             <div class="kpi-grid">
                 <div class="kpi-card total-employees">
@@ -258,6 +269,7 @@
                             <option value="all">כל היחידות</option>
                             <option value="submitted">דיווחו בלבד</option>
                             <option value="pending">טרם דיווחו בלבד</option>
+                            <option value="updated">שינו/עדכנו דיווח</option>
                         </select>
                     </div>
                 </div>
@@ -275,7 +287,7 @@
                                 <th>עבודה מהבית</th>
                                 <th>רידוד סד"כ</th>
                                 <th>לא נוכח מסיבות אחרות</th>
-                                <th>סטטוס דיווח</th>
+                                <th>סטטוס דיווח & זמן</th>
                                 <th>פעולות</th>
                             </tr>
                         </thead>
@@ -324,6 +336,37 @@
         </section>
 
     </main>
+
+    <!-- DUPLICATE SUBMISSION WARNING MODAL -->
+    <div class="modal-backdrop hidden" id="already-submitted-modal">
+        <div class="modal-box alert-modal-box">
+            <div class="modal-header warning-header">
+                <h3><i class="fa-solid fa-triangle-exclamation"></i> יחידה זו כבר הגישה דיווח יומי!</h3>
+                <button class="modal-close" onclick="cancelDuplicateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="warning-dialog-icon">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                </div>
+                <h4 class="warning-title" id="already-submitted-unit-title">שנה/עדכן דיווח קודם</h4>
+                <p class="warning-desc" id="already-submitted-time-text">
+                    יחידה זו כבר הגישה דיווח דמ"ח מלא עבור התאריך שנבחר.
+                </p>
+                <div class="warning-notice-box">
+                    <i class="fa-solid fa-bell"></i>
+                    <span>שימו לב: במידה ותאשרו שינוי, תשלח התראה מפורטת לדשבורד המנהלים עם שעת העדכון!</span>
+                </div>
+            </div>
+            <div class="modal-footer warning-footer">
+                <button class="btn btn-secondary" onclick="cancelDuplicateModal()">
+                    <i class="fa-solid fa-xmark"></i> ביטול
+                </button>
+                <button class="btn btn-warning" onclick="confirmDuplicateUpdate()">
+                    <i class="fa-solid fa-pen-to-square"></i> אני רוצה לעדכן את הדיווח
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- ADMIN LOGIN MODAL -->
     <div class="modal-backdrop hidden" id="login-modal">

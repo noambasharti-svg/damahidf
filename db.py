@@ -42,7 +42,6 @@ def hash_password(password):
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
-    # High-concurrency WAL mode setup
     conn.execute('PRAGMA journal_mode=WAL')
     conn.execute('PRAGMA busy_timeout=5000')
     conn.execute('PRAGMA synchronous=NORMAL')
@@ -75,6 +74,7 @@ def init_db():
             work_from_home INTEGER NOT NULL DEFAULT 0,
             standby_reduction INTEGER NOT NULL DEFAULT 0,
             other_absent INTEGER NOT NULL DEFAULT 0,
+            revision_count INTEGER NOT NULL DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             submitted_by TEXT DEFAULT '',
@@ -82,6 +82,12 @@ def init_db():
             UNIQUE(unit_id, report_date)
         )
     ''')
+
+    # Migration check for revision_count column
+    try:
+        cursor.execute('ALTER TABLE daily_reports ADD COLUMN revision_count INTEGER NOT NULL DEFAULT 1')
+    except Exception:
+        pass
     
     # Create users table
     cursor.execute('''
@@ -181,7 +187,9 @@ def get_reports_for_date(report_date):
             r.work_from_home,
             r.standby_reduction,
             r.other_absent,
+            COALESCE(r.revision_count, 1) as revision_count,
             r.submitted_by,
+            r.created_at,
             r.updated_at,
             CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END as is_submitted
         FROM units u
@@ -207,23 +215,34 @@ def save_report(unit_id, report_date, present_base, reserve, work_from_home, sta
     if total_reported != unit['quota']:
         conn.close()
         raise ValueError(f'סך העובדים שדווחו ({total_reported}) אינו תואם למצבה הקבועה של היחידה ({unit["quota"]})')
+    
+    # Check if report already exists for revision count
+    existing = conn.execute('SELECT id, revision_count FROM daily_reports WHERE unit_id = ? AND report_date = ?', (unit_id, report_date)).fetchone()
+    
+    is_update = False
+    new_rev = 1
+    if existing:
+        is_update = True
+        new_rev = (existing['revision_count'] or 1) + 1
         
     cursor.execute('''
-        INSERT INTO daily_reports (unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, submitted_by, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        INSERT INTO daily_reports (unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, revision_count, submitted_by, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(unit_id, report_date) DO UPDATE SET
             present_base = excluded.present_base,
             reserve = excluded.reserve,
             work_from_home = excluded.work_from_home,
             standby_reduction = excluded.standby_reduction,
             other_absent = excluded.other_absent,
+            revision_count = daily_reports.revision_count + 1,
             submitted_by = excluded.submitted_by,
             updated_at = CURRENT_TIMESTAMP
     ''', (unit_id, report_date, present_base, reserve, work_from_home, standby_reduction, other_absent, submitted_by))
     
     conn.commit()
     conn.close()
+    return is_update, new_rev
 
 if __name__ == '__main__':
     init_db()
-    print("WAL Mode Database initialized successfully!")
+    print("WAL Mode Database with revision tracking initialized successfully!")
